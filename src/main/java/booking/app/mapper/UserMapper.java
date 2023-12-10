@@ -11,7 +11,7 @@ import org.mapstruct.Mapping;
 public interface UserMapper {
     UserResponseDto toDto(User user);
 
-    @Mapping(target = "role", expression = "java(User.Role.CUSTOMER)")
+    @Mapping(target = "role", expression = "java(User.Role.ROLE_CUSTOMER)")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "authorities", ignore = true)
