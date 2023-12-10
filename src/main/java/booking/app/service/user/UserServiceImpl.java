@@ -53,19 +53,19 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto updateUserProfile(final UserUpdateProfileInformationDto request) {
         User user = getAndCheckAuthenticatedUser();
 
-        if (request.email() != null) {
+        if (request.email() != null && !request.email().equals(user.getEmail())) {
             user.setEmail(request.email());
         }
 
-        if (request.password() != null) {
+        if (request.password() != null && !request.password().equals(user.getPassword())) {
             user.setPassword(passwordEncoder.encode(request.password()));
         }
 
-        if (request.firstName() != null) {
+        if (request.firstName() != null && !request.firstName().equals(user.getFirstName())) {
             user.setFirstName(request.firstName());
         }
 
-        if (request.lastName() != null) {
+        if (request.lastName() != null && !request.lastName().equals(user.getLastName())) {
             user.setLastName(request.lastName());
         }
 
