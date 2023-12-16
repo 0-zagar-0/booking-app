@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import java.util.Collection;
 import java.util.List;
 import lombok.Data;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 import org.springframework.security.core.GrantedAuthority;
@@ -21,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Data
 @SQLDelete(sql = "UPDATE users SET is_deleted = TRUE WHERE id = ?")
 @Where(clause = "is_deleted = FALSE")
+@DynamicUpdate
 @Table(name = "users")
 public class User implements UserDetails {
     @Id

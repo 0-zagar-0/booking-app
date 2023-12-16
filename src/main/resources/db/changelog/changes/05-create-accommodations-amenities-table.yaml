@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-accommodations-amenities-table
+      author: zagar
+      changes:
+        - createTable:
+            tableName: accommodations_amenities
+            columns:
+              - column:
+                  name: accommodation_id
+                  type: BIGINT
+                  constraints:
+                    foreignKeyName: fk_accommodations_amenities_accommodation
+                    referencedTableName: accommodations
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: amenity_id
+                  type: BIGINT
+                  constraints:
+                    foreignKeyName: fk_accommodations_amenities_amenity
+                    referencedTableName: amenities
+                    referencedColumnNames: id
+                    nullable: false
+              - column:
+                  name: id_deleted
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

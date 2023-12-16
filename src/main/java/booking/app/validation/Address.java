@@ -7,11 +7,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Constraint(validatedBy = PasswordValidation.class)
+@Constraint(validatedBy = AddressValidation.class)
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Password {
-    String message() default " or repeat password is invalid";
+public @interface Address {
+    String message() default " is incorrect must be: City, Street, number house";
 
     Class<?>[] groups() default {};
 
