@@ -15,13 +15,15 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.Set;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 @Entity
-@Data
+@Getter
+@Setter
 @SQLDelete(sql = "UPDATE accommodations SET is_deleted = TRUE WHERE id = ?")
 @Where(clause = "is_deleted = FALSE")
 @DynamicUpdate
@@ -30,28 +32,28 @@ public class Accommodation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    // тип приміщення
+
     @Enumerated(EnumType.STRING)
     @Column(unique = true, nullable = false)
     private Type type;
-    // адреса
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id")
     private Address address;
-    // розмір скільки кімнат чи студія тощо...
+
     @Enumerated(EnumType.STRING)
     @Column(unique = true, nullable = false)
     private Size size;
-    // зручності
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "accommodations_amenities",
             joinColumns = @JoinColumn(name = "accommodation_id"),
             inverseJoinColumns = @JoinColumn(name = "amenity_id"))
     private Set<Amenity> amenities;
-    // щоденна ставка
+
     @Column(name = "daily_rate", nullable = false)
     private BigDecimal dailyRate;
-    // кількість наявних апартаментів
+
     private Integer availability;
 
     @Column(name = "is_deleted", nullable = false)

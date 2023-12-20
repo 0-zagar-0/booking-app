@@ -72,6 +72,18 @@ public class UserServiceImpl implements UserService {
         return userMapper.toDto(userRepository.save(user));
     }
 
+    @Override
+    public User getAutnenticatedUser() {
+        return getAndCheckAuthenticatedUser();
+    }
+
+    @Override
+    public void existsById(final Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new EntityNotFoundException("Can't find user by id: " + id);
+        }
+    }
+
     private User getAndCheckAuthenticatedUser() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -89,5 +101,4 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("The operation cannot be continued", e);
         }
     }
-
 }

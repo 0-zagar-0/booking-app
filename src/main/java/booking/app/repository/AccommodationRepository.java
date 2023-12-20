@@ -1,7 +1,9 @@
 package booking.app.repository;
 
 import booking.app.model.accommodation.Accommodation;
+import booking.app.model.accommodation.Address;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,4 +23,6 @@ public interface AccommodationRepository extends JpaRepository<Accommodation, Lo
     @EntityGraph(attributePaths = {"address", "amenities"})
     Optional<Accommodation> findById(Long id);
 
+    @EntityGraph(attributePaths = {"address", "amenities"})
+    List<Accommodation> findByAddress(Address address);
 }
