@@ -15,6 +15,7 @@ import booking.app.model.accommodation.Amenity;
 import booking.app.repository.AccommodationRepository;
 import booking.app.service.accommodation.address.AddressService;
 import booking.app.service.accommodation.amenity.AmenityService;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class AccommodationServiceImpl implements AccommodationService {
     public AccommodationFullInfoResponseDto createAccommodation(AccommodationRequestDto request) {
         Type type = checkAndGetSizeOrType(request.getType(), Type.class);
         checkAvailabilityForHouseType(type, request.getAvailability());
-        checkAddressForHouseType(type, request.getAddress());
+        checkValidAddressForHouseType(type, request.getAddress());
 
         Accommodation accommodation = accommodationMapper.toEntity(request);
         accommodation.setAmenities(amenityService.getSetAmenitiesByAmenitiesNames(
@@ -51,6 +52,13 @@ public class AccommodationServiceImpl implements AccommodationService {
         accommodation.setSize(checkAndGetSizeOrType(request.getSize(), Size.class));
 
         Accommodation checkedAccommodation = checkAndReturnExistingAccommodation(accommodation);
+
+        if (checkedAccommodation != null) {
+            checkedAccommodation.setAvailability(
+                    checkedAccommodation.getAvailability() + request.getAvailability()
+            );
+        }
+
         return checkedAccommodation != null
                 ? accommodationMapper.toFullDto(checkedAccommodation)
                 : accommodationMapper.toFullDto(accommodationRepository.save(accommodation));
@@ -80,7 +88,7 @@ public class AccommodationServiceImpl implements AccommodationService {
                 () -> new EntityNotFoundException("Can't find accommodation by id: " + id)
         );
 
-        if (!request.getAmenities().isEmpty()) {
+        if (request.getAmenities() != null && !request.getAmenities().isEmpty()) {
             Set<Amenity> amenities = amenityService.getSetAmenitiesByAmenitiesNames(
                     request.getAmenities()
             );
@@ -104,8 +112,14 @@ public class AccommodationServiceImpl implements AccommodationService {
                 () -> new EntityNotFoundException("Can't find accommodation by id: " + id)
         );
         checkAddressForHouseTypeAndDelete(accommodation.getType(), accommodation.getAddress());
-
         accommodationRepository.deleteById(id);
+    }
+
+    @Override
+    public Accommodation getAccommodationById(final Long id) {
+        return accommodationRepository.findById(id).orElseThrow(
+                () -> new EntityNotFoundException("Can't find accommodation by id: " + id)
+        );
     }
 
     private void checkAddressForHouseTypeAndDelete(Type type, Address address) {
@@ -136,35 +150,46 @@ public class AccommodationServiceImpl implements AccommodationService {
         }
     }
 
-    private void checkAddressForHouseType(Type type, String address) {
-        for (String value : HOUSE_TYPES_WITH_ONE_ADDRESS_AND_AVAILABILITY) {
-            if (type.name().equals(value) && addressService.checkExistingAddress(address)) {
+    private void checkValidAddressForHouseType(Type type, String address) {
+        if (!addressService.checkExistingAddress(address)) {
+            return;
+        }
+
+        if (checkContainsTypeFromHouseTypes(type)) {
+            throw new DataProcessingException("This address: " + address
+                    + " already exists for another property of this type: " + type.name());
+        }
+
+        Address addressFromDb = addressService.getAddressByAddressArgument(address);
+        List<Accommodation> accommodations = accommodationRepository.findByAddress(addressFromDb);
+
+        for (Accommodation accommodation : accommodations) {
+            if (checkContainsTypeFromHouseTypes(accommodation.getType())) {
                 throw new DataProcessingException("This address: " + address
-                        + " already exists for another property of this type: " + type.name());
+                        + " already exists for another property of this type: "
+                        + accommodation.getType().name());
             }
         }
     }
 
+    private boolean checkContainsTypeFromHouseTypes(Type type) {
+        return Arrays.stream(
+                HOUSE_TYPES_WITH_ONE_ADDRESS_AND_AVAILABILITY).toList().contains(type.name()
+        );
+    }
+
     private <T extends Enum<T>> T checkAndGetSizeOrType(String name, Class<T> enumType) {
-        String newName = checkAndReturnValidString(name);
+        String validName = name.trim().contains(" ")
+                ? name.toUpperCase().trim().replace(" ", "_")
+                : name.toUpperCase().trim();
 
         for (T value : enumType.getEnumConstants()) {
-            if (newName.equals(value.name())) {
+            if (validName.equals(value.name())) {
                 return value;
             }
         }
 
         throw new DataProcessingException(generateExceptionMessage(enumType));
-    }
-
-    private String checkAndReturnValidString(String value) {
-        String newValue = value.toUpperCase().trim();
-
-        if (value.contains(" ")) {
-            return value.replace(' ', '_').toUpperCase();
-        }
-
-        return newValue;
     }
 
     private <T extends Enum<T>> String generateExceptionMessage(Class<T> enumType) {
