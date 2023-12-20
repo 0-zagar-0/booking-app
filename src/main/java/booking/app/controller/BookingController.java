@@ -74,6 +74,4 @@ public class BookingController {
     public void deleteById(@PathVariable Long id) {
         bookingService.deleteById(id);
     }
-
-
 }
