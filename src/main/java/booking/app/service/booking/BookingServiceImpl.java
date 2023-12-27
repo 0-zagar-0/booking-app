@@ -77,13 +77,25 @@ public class BookingServiceImpl implements BookingService {
     public void updateById(final Long id, final BookingUpdateRequestDto request) {
         Booking booking = getBookingById(id);
         checkCorrectUserForBooking(booking);
-        LocalDateTime checkInDate =
-                checkAndParseCheckInDateToLocalDateTime(request.getCheckInDateYearMonthDay());
-        LocalDateTime checkOutDate = checkInDate.plusDays(request.getDaysOfStay()).minusSeconds(1);
 
-        checkingDateBookingAndAvailability(checkInDate, checkOutDate, booking.getAccommodation());
-        booking.setCheckInDate(checkInDate);
-        booking.setCheckOutDate(checkOutDate);
+        if (request.getCheckInDateYearMonthDay() != null
+                && !request.getCheckInDateYearMonthDay().isEmpty()
+                && request.getDaysOfStay() != null) {
+            LocalDateTime checkInDate =
+                    checkAndParseCheckInDateToLocalDateTime(request.getCheckInDateYearMonthDay());
+            LocalDateTime checkOutDate =
+                    checkInDate.plusDays(request.getDaysOfStay()).minusSeconds(1);
+            checkingDateBookingAndAvailability(
+                    checkInDate, checkOutDate, booking.getAccommodation()
+            );
+            booking.setCheckInDate(checkInDate);
+            booking.setCheckOutDate(checkOutDate);
+        }
+
+        if (request.getStatus() != null) {
+            Booking.Status status = checkValidStatus(request.getStatus());
+            booking.setStatus(status);
+        }
 
         bookingRepository.save(booking);
     }
