@@ -1,11 +1,18 @@
 package booking.app.service.payment;
 
+import booking.app.dto.payment.PaymentCanceledResponseDto;
 import booking.app.dto.payment.PaymentCreateRequestDto;
+import booking.app.dto.payment.PaymentResponseDto;
+import booking.app.dto.payment.PaymentSuccessResponseDto;
+import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 public interface PaymentService {
-    void initializeSession(PaymentCreateRequestDto request);
+    List<PaymentResponseDto> getAllPaymentByUserId(Long userId, Pageable pageable);
 
-    void confirmPaymentIntent();
+    String initializeSession(PaymentCreateRequestDto request);
 
-    void paymentCancellation();
+    PaymentSuccessResponseDto confirmPaymentIntent();
+
+    PaymentCanceledResponseDto paymentCancellation();
 }

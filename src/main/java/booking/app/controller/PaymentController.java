@@ -1,10 +1,15 @@
 package booking.app.controller;
 
+import booking.app.dto.payment.PaymentCanceledResponseDto;
 import booking.app.dto.payment.PaymentCreateRequestDto;
+import booking.app.dto.payment.PaymentResponseDto;
+import booking.app.dto.payment.PaymentSuccessResponseDto;
 import booking.app.service.payment.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,30 +29,32 @@ public class PaymentController {
     @GetMapping
     @Operation(summary = "Get all user payments", description = "Get user payments")
     @ResponseStatus(HttpStatus.OK)
-    public Object getPaymentByUser(@RequestParam(name = "user_id") Long userId) {
-        return null;
+    public List<PaymentResponseDto> getPaymentByUser(
+            @RequestParam(name = "user_id") Long userId, Pageable pageable
+    ) {
+        return paymentService.getAllPaymentByUserId(userId, pageable);
     }
 
     @PostMapping
     @Operation(summary = "Initialize session",
             description = "Initialize session and create payment")
     @ResponseStatus(HttpStatus.CREATED)
-    public void initializeSession(@RequestBody PaymentCreateRequestDto request) {
-        paymentService.initializeSession(request);
+    public String initializeSession(@RequestBody PaymentCreateRequestDto request) {
+        return paymentService.initializeSession(request);
     }
 
     @GetMapping("/success")
     @Operation(summary = "Success payment", description = "Confirm payment intent")
     @ResponseStatus(HttpStatus.OK)
-    public void successfulPaymentProcessing() {
-        paymentService.confirmPaymentIntent();
+    public PaymentSuccessResponseDto successfulPaymentProcessing() {
+        return paymentService.confirmPaymentIntent();
     }
 
     @GetMapping("/cancel")
     @Operation(summary = "Payment cancellation", description = "Payment cancellation")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void paymentCancellation() {
-        paymentService.paymentCancellation();
+    public PaymentCanceledResponseDto paymentCancellation() {
+        return paymentService.paymentCancellation();
     }
 
 }

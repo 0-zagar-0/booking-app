@@ -55,6 +55,7 @@ public class Booking {
         PENDING,
         CONFIRMED,
         CANCELED,
-        EXPIRED
+        EXPIRED,
+        FAILED
     }
 }

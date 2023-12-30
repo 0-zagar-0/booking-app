@@ -3,10 +3,15 @@ package booking.app.service.payment;
 import booking.app.dto.accommodation.AccommodationFullInfoResponseDto;
 import booking.app.dto.booking.BookingResponseDto;
 import booking.app.dto.booking.BookingUpdateRequestDto;
+import booking.app.dto.payment.PaymentCanceledResponseDto;
 import booking.app.dto.payment.PaymentCreateRequestDto;
+import booking.app.dto.payment.PaymentResponseDto;
+import booking.app.dto.payment.PaymentSuccessResponseDto;
 import booking.app.exception.CardProcessingException;
 import booking.app.exception.DataProcessingException;
 import booking.app.exception.EntityNotFoundException;
+import booking.app.mapper.PaymentMapper;
+import booking.app.model.Booking;
 import booking.app.model.Payment;
 import booking.app.model.User;
 import booking.app.repository.PaymentRepository;
@@ -20,6 +25,7 @@ import com.stripe.model.ChargeCollection;
 import com.stripe.model.Customer;
 import com.stripe.model.CustomerCollection;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.PaymentIntentCollection;
 import com.stripe.model.PaymentMethod;
 import com.stripe.model.Price;
 import com.stripe.model.Product;
@@ -29,6 +35,8 @@ import com.stripe.param.ChargeListParams;
 import com.stripe.param.CustomerCreateParams;
 import com.stripe.param.CustomerListParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentListParams;
+import com.stripe.param.PaymentIntentUpdateParams;
 import com.stripe.param.PaymentMethodCreateParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.ProductCreateParams;
@@ -37,12 +45,11 @@ import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,45 +57,73 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-    private static final String BOOKING_PENDING_STATUS = "PENDING";
-    private static final String BOOKING_CONFIRMED_STATUS = "CONFIRMED";
-    private static final String BOOKING_CANCELED_STATUS = "CANCELED";
-    private static final String BOOKING_ID_METADATA = ".Booking_id";
-    private static final String PAYMENT_PAID_STATUS = "PAID";
-    private static final String BOOKING_CLASS_NAME = "BOOKING";
-    private static final String PAYMENT_CLASS_NAME = "PAYMENT";
+    private static final String BOOKING_ID_METADATA = "Booking_id";
+    private static final String PAYMENT_ID_METADATA = "Payment_id";
     private static final String CURRENCY = "USD";
+    private static final String SUCCESS_STATUS = "succeeded";
 
     private final PaymentRepository paymentRepository;
     private final UserService userService;
     private final BookingService bookingService;
     private final AccommodationService accommodationService;
+    private final PaymentMapper paymentMapper;
 
     @Value("${stripe.secret.key}")
     private String stripeSecretKey;
     private Session session;
 
-    @Transactional
     @Override
-    public void initializeSession(PaymentCreateRequestDto request) {
-        final User user = userService.getAutnenticatedUser();
-        Long totalAmount = checkValidBookingIdsAndGetTotalAmount(request.getBookingIds(), user);
-        createSession(
-                request.getProductName(),
-                totalAmount,
-                request.getBookingIds(),
-                user,
-                request.getPaymentCardToken()
-        );
+    public List<PaymentResponseDto> getAllPaymentByUserId(final Long userId, Pageable pageable) {
+        User user = userService.getById(userId);
+        List<PaymentResponseDto> payments = new ArrayList<>();
 
-        for (Long bookingId : request.getBookingIds()) {
-            paymentRepository.save(createPayment(bookingId));
+        try {
+            CustomerListParams customerParams = CustomerListParams.builder()
+                    .setEmail(user.getEmail())
+                    .build();
+            CustomerCollection customers = Customer.list(customerParams, createRequestOption());
+            Customer customer = customers.getData().get(0);
+
+            PaymentIntentListParams paymentIntentParams = PaymentIntentListParams.builder()
+                    .setCustomer(customer.getId())
+                    .build();
+            PaymentIntentCollection paymentIntents =
+                    PaymentIntent.list(paymentIntentParams, createRequestOption());
+
+            for (PaymentIntent intent : paymentIntents.getData()) {
+                Long paymentId = Long.parseLong(intent.getMetadata().get(PAYMENT_ID_METADATA));
+                Payment payment = paymentRepository.findById(paymentId).orElseThrow(
+                        () -> new EntityNotFoundException("Can't find payment by id: " + paymentId)
+                );
+                payments.add(paymentMapper.toDto(
+                        payment, intent.getPaymentMethodTypes().get(0), intent.getCurrency())
+                );
+            }
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe exception: " + e.getMessage());
         }
+        return payments;
     }
 
     @Transactional
     @Override
-    public void confirmPaymentIntent() {
+    public String initializeSession(PaymentCreateRequestDto request) {
+        final User user = userService.getAutnenticatedUser();
+        Long totalAmount = checkValidBookingIdsAndGetTotalAmount(request.getBookingId(), user);
+        createSession(
+                request.getProductName(),
+                totalAmount,
+                request.getBookingId(),
+                user,
+                request.getPaymentCardToken()
+        );
+        paymentRepository.save(createPayment(request.getBookingId()));
+        addToPaymentIntentMetadataPaymentId();
+        return session.getUrl();
+    }
+
+    @Override
+    public PaymentSuccessResponseDto confirmPaymentIntent() {
         PaymentIntent intent = null;
 
         try {
@@ -97,49 +132,55 @@ public class PaymentServiceImpl implements PaymentService {
             );
             PaymentIntent confirmedIntent = intent.confirm(createRequestOption());
 
-            if ("succeeded".equals(confirmedIntent.getStatus())) {
+            if (SUCCESS_STATUS.equals(confirmedIntent.getStatus())) {
+                Long bookingId = Long.parseLong(
+                        confirmedIntent.getMetadata().get(BOOKING_ID_METADATA)
+                );
+                updateBookingStatus(bookingId, Booking.Status.CONFIRMED.name());
+                updatePaymentStatus(Payment.Status.PAID);
                 ChargeCollection charges = getChargeCollection(confirmedIntent);
 
                 if (!charges.getData().isEmpty()) {
                     session.setSuccessUrl(charges.getData().get(0).getReceiptUrl());
-                    updateStatus(BOOKING_CLASS_NAME, confirmedIntent, BOOKING_CONFIRMED_STATUS);
-                    updateStatus(PAYMENT_CLASS_NAME, confirmedIntent, PAYMENT_PAID_STATUS);
                 }
             }
         } catch (CardException cardException) {
             updatePaymentStatus(Payment.Status.FAILED);
+            updateBookingStatus(
+                    getPaymentBySessionId().getBookingId(), Booking.Status.FAILED.name()
+            );
             ChargeCollection charges = getChargeCollection(intent);
-
             throw new CardProcessingException(
                     charges.getData().get(0).getFailureMessage()
             );
         } catch (StripeException e) {
             throw new RuntimeException("Stripe error: " + e.getMessage());
         }
+
+        return new PaymentSuccessResponseDto(session.getSuccessUrl());
     }
 
     @Transactional
     @Override
-    public void paymentCancellation() {
+    public PaymentCanceledResponseDto paymentCancellation() {
         try {
             PaymentIntent intent =
                     PaymentIntent.retrieve(session.getPaymentIntent(), createRequestOption());
             intent.cancel(createRequestOption());
-
             updatePaymentStatus(Payment.Status.CANCELED);
-
-            BookingUpdateRequestDto requestUpdate = new BookingUpdateRequestDto();
-            requestUpdate.setStatus(BOOKING_CANCELED_STATUS);
-            bookingService.updateById(getPaymentBySessionId().getBookingId(), requestUpdate);
+            updateBookingStatus(
+                    getPaymentBySessionId().getBookingId(), Booking.Status.CANCELED.name()
+            );
         } catch (StripeException e) {
             throw new RuntimeException("Stripe error: " + e.getMessage());
         }
+        return new PaymentCanceledResponseDto(session.getCancelUrl().toString());
     }
 
     private void createSession(
             String productName,
             Long amountPrice,
-            List<Long> bookingsIds,
+            Long bookingId,
             User user,
             String cardToken
     ) {
@@ -147,7 +188,7 @@ public class PaymentServiceImpl implements PaymentService {
         final Price price = createPrice(amountPrice, product.getId());
         final Customer customer = createCustomer(user);
         final PaymentIntent paymentIntent =
-                createPaymentIntent(productName, price, bookingsIds, customer, cardToken);
+                createPaymentIntent(productName, price, bookingId, customer, cardToken);
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
@@ -188,7 +229,7 @@ public class PaymentServiceImpl implements PaymentService {
     private PaymentIntent createPaymentIntent(
             String productName,
             Price price,
-            List<Long> bookingIds,
+            Long bookingId,
             Customer customer,
             String cardToken
     ) {
@@ -201,7 +242,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .setCustomer(customer.getId())
                 .build();
 
-        addBookingIdsToIntentMetadata(params, bookingIds);
+        addBookingIdToIntentMetadata(params, bookingId);
         try {
             return PaymentIntent.create(params, createRequestOption());
         } catch (StripeException e) {
@@ -212,11 +253,10 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private PaymentMethod createPaymentMethod(String token) {
-        String tokenCard = token;
         PaymentMethodCreateParams params = PaymentMethodCreateParams.builder()
                 .setType(PaymentMethodCreateParams.Type.CARD)
                 .setCard(PaymentMethodCreateParams.Token.builder()
-                        .setToken(tokenCard)
+                        .setToken(token)
                         .build()
                 )
                 .build();
@@ -294,14 +334,6 @@ public class PaymentServiceImpl implements PaymentService {
         return accommodationDto.dailyRate().longValue() * days;
     }
 
-    private Payment getPaymentByBookingId(Long bookingId) {
-        return paymentRepository.findByBookingIdAndSessionId(bookingId, session.getId())
-                .orElseThrow(
-                        () -> new EntityNotFoundException("Can't find payment by booking id: "
-                                + bookingId)
-                );
-    }
-
     private ChargeCollection getChargeCollection(PaymentIntent intent) {
         ChargeListParams chargeListParams = ChargeListParams.builder()
                 .setPaymentIntent(intent.getId())
@@ -313,54 +345,55 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private void updateStatus(String updateClassName, PaymentIntent intent, String status) {
-        final ChargeCollection charges = getChargeCollection(intent);
-        final Map<String, String> metadata = charges.getData().get(0).getMetadata();
-
-        for (Map.Entry<String, String> entry : metadata.entrySet()) {
-            if (entry.getKey().contains(BOOKING_ID_METADATA)) {
-                if (updateClassName.equals(BOOKING_CLASS_NAME)) {
-                    BookingUpdateRequestDto updateReq = new BookingUpdateRequestDto();
-                    updateReq.setStatus(status);
-                    bookingService.updateById(Long.parseLong(entry.getValue()), updateReq);
-                } else if (updateClassName.equals(PAYMENT_CLASS_NAME)) {
-                    Payment payment = getPaymentByBookingId(Long.parseLong(entry.getValue()));
-                    payment.setStatus(Payment.Status.valueOf(status));
-                    paymentRepository.save(payment);
-                }
-            }
-        }
+    private void updateBookingStatus(Long bookingId, String status) {
+        BookingUpdateRequestDto updateReq = new BookingUpdateRequestDto();
+        updateReq.setStatus(status);
+        bookingService.updateById(bookingId, updateReq);
     }
 
     private void updatePaymentStatus(Payment.Status status) {
-        final Payment payment = getPaymentBySessionId();
+        Payment payment = getPaymentBySessionId();
         payment.setStatus(status);
         paymentRepository.save(payment);
     }
 
-    private Long checkValidBookingIdsAndGetTotalAmount(List<Long> bookingIds, User user) {
-        Pageable pageable = PageRequest.of(0, 100);
-        final List<BookingResponseDto> pendingUserBookings = bookingService
-                .getAllByUserIdAndStatus(user.getId(), BOOKING_PENDING_STATUS, pageable);
+    private Long checkValidBookingIdsAndGetTotalAmount(Long bookingId, User user) {
+        BookingResponseDto bookingById = bookingService.getById(bookingId);
+        checkBookingAndGenerateExceptionMessage(bookingById, user.getId());
+
+        AccommodationFullInfoResponseDto accommodationById = accommodationService
+                .getById(bookingById.accommodationId());
+        long days = ChronoUnit.DAYS.between(
+                bookingById.checkInDate(), bookingById.checkOutDate().plusSeconds(1)
+        );
+
         AtomicLong amount = new AtomicLong(0L);
-
-        for (Long bookingId : bookingIds) {
-            BookingResponseDto bookingById = bookingService.getById(bookingId);
-
-            if (!pendingUserBookings.contains(bookingService.getById(bookingId))) {
-                throw new DataProcessingException("The booking for this ID: " + bookingId
-                        + " is not on your list or has already been paid for"
-                );
-            }
-
-            AccommodationFullInfoResponseDto accommodationById = accommodationService
-                    .getById(bookingService.getById(bookingId).accommodationId());
-            long days = ChronoUnit.DAYS.between(
-                    bookingById.checkInDate(), bookingById.checkOutDate().plusSeconds(1)
-            );
-            amount.addAndGet(accommodationById.dailyRate().longValue() * days);
-        }
+        amount.addAndGet(accommodationById.dailyRate().longValue() * days);
         return amount.get();
+    }
+
+    private void checkBookingAndGenerateExceptionMessage(
+            BookingResponseDto booking, Long userId
+    ) {
+        if (!booking.userId().equals(userId)) {
+            throw new DataProcessingException("Booking for this ID: " + booking.id()
+                    + " not on your bookings.");
+        }
+
+        if (booking.status().equals(Booking.Status.CONFIRMED.name())) {
+            throw new DataProcessingException("This booking has already been paid, "
+                    + "please check your reservations");
+        }
+
+        if (booking.status().equals(Booking.Status.CANCELED.name())) {
+            throw new DataProcessingException("This booking has been cancelled. "
+                    + "Please create a new booking and try the payment again.");
+        }
+
+        if (booking.status().equals(Booking.Status.FAILED.name())) {
+            throw new DataProcessingException("This booking has been failed. "
+                    + "Please create a new booking and try the payment again.");
+        }
     }
 
     private Customer checkExistsCustomer(String email) {
@@ -380,11 +413,23 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    private void addBookingIdsToIntentMetadata(
-            PaymentIntentCreateParams params, List<Long> bookingIds
-    ) {
-        for (int i = 0; i < bookingIds.size(); i++) {
-            params.getMetadata().put((i + 1) + BOOKING_ID_METADATA, bookingIds.get(i).toString());
+    private void addToPaymentIntentMetadataPaymentId() {
+        try {
+            PaymentIntentUpdateParams params = PaymentIntentUpdateParams.builder()
+                    .putMetadata(PAYMENT_ID_METADATA, getPaymentBySessionId().getId().toString())
+                    .build();
+            PaymentIntent intent = PaymentIntent.retrieve(
+                    session.getPaymentIntent(), createRequestOption()
+            );
+            intent.update(params, createRequestOption());
+        } catch (StripeException e) {
+            throw new RuntimeException(e);
         }
+    }
+
+    private void addBookingIdToIntentMetadata(
+            PaymentIntentCreateParams params, Long bookingId
+    ) {
+        params.getMetadata().put(BOOKING_ID_METADATA, bookingId.toString());
     }
 }
