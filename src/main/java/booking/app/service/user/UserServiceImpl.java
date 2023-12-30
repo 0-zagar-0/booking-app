@@ -84,6 +84,13 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    public User getById(final Long id) {
+        return userRepository.findById(id).orElseThrow(
+                () -> new EntityNotFoundException("Can't find user by id: " + id)
+        );
+    }
+
     private User getAndCheckAuthenticatedUser() {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

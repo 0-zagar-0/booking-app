@@ -11,3 +11,5 @@ databaseChangeLog:
       file: /db/changelog/changes/05-create-accommodations-amenities-table.yaml
   - include:
       file: /db/changelog/changes/06-create-bookings-table.yaml
+  - include:
+      file: /db/changelog/changes/07-create-payments-table.yaml

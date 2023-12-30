@@ -15,8 +15,10 @@ import booking.app.service.user.UserService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +35,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingResponseDto createBooking(final BookingRequestDto request) {
+        checkBookingWithStatusPending();
         LocalDateTime checkInDate = checkAndParseCheckInDateToLocalDateTime(
                 request.getCheckInDateYearMonthDay()
         );
@@ -45,6 +48,18 @@ public class BookingServiceImpl implements BookingService {
         booking.setAccommodation(accommodation);
 
         return bookingMapper.toDto(bookingRepository.save(booking));
+    }
+
+    private void checkBookingWithStatusPending() {
+        Pageable pageable = PageRequest.of(0, 1);
+        User user = userService.getAutnenticatedUser();
+        final List<BookingResponseDto> allByUserIdAndStatus
+                = getAllByUserIdAndStatus(user.getId(), Booking.Status.PENDING.name(), pageable);
+
+        if (!allByUserIdAndStatus.isEmpty()) {
+            throw new DataProcessingException("It is not possible to create a new booking until "
+                    + "you have paid or canceled the previous booking.");
+        }
     }
 
     @Override
@@ -77,13 +92,25 @@ public class BookingServiceImpl implements BookingService {
     public void updateById(final Long id, final BookingUpdateRequestDto request) {
         Booking booking = getBookingById(id);
         checkCorrectUserForBooking(booking);
-        LocalDateTime checkInDate =
-                checkAndParseCheckInDateToLocalDateTime(request.getCheckInDateYearMonthDay());
-        LocalDateTime checkOutDate = checkInDate.plusDays(request.getDaysOfStay()).minusSeconds(1);
 
-        checkingDateBookingAndAvailability(checkInDate, checkOutDate, booking.getAccommodation());
-        booking.setCheckInDate(checkInDate);
-        booking.setCheckOutDate(checkOutDate);
+        if (request.getCheckInDateYearMonthDay() != null
+                && !request.getCheckInDateYearMonthDay().isEmpty()
+                && request.getDaysOfStay() != null) {
+            LocalDateTime checkInDate =
+                    checkAndParseCheckInDateToLocalDateTime(request.getCheckInDateYearMonthDay());
+            LocalDateTime checkOutDate =
+                    checkInDate.plusDays(request.getDaysOfStay()).minusSeconds(1);
+            checkingDateBookingAndAvailability(
+                    checkInDate, checkOutDate, booking.getAccommodation()
+            );
+            booking.setCheckInDate(checkInDate);
+            booking.setCheckOutDate(checkOutDate);
+        }
+
+        if (request.getStatus() != null) {
+            Booking.Status status = checkValidStatus(request.getStatus());
+            booking.setStatus(status);
+        }
 
         bookingRepository.save(booking);
     }
@@ -135,14 +162,28 @@ public class BookingServiceImpl implements BookingService {
                 bookingRepository.findAllBetweenCheckInDateAndCheckOutDate(
                         checkInDate, checkOutDate, accommodation.getId()
                 );
+        final List<Booking> bookings =
+                checkStatus(allByCheckInDateAndCheckOutDate);
 
         boolean checkAvailability = accommodation.getAvailability()
-                - allByCheckInDateAndCheckOutDate.size() <= 0;
+                - bookings.size() <= 0;
 
-        if (!allByCheckInDateAndCheckOutDate.isEmpty() && checkAvailability) {
+        if (!bookings.isEmpty() && checkAvailability) {
             throw new DataProcessingException("There are no vacancies in the interval from: "
                     + checkInDate + ", to: " + checkOutDate);
         }
+    }
+
+    private List<Booking> checkStatus(List<Booking> bookings) {
+        List<Booking> bookingWithPendingStatus = new ArrayList<>();
+
+        for (Booking booking : bookings) {
+            if (booking.getStatus().equals(Booking.Status.PENDING)
+                    || booking.getStatus().equals(Booking.Status.CONFIRMED)) {
+                bookingWithPendingStatus.add(booking);
+            }
+        }
+        return bookingWithPendingStatus;
     }
 
     private LocalDateTime checkAndParseCheckInDateToLocalDateTime(String date) {
