@@ -138,11 +138,7 @@ public class PaymentServiceImpl implements PaymentService {
                 );
                 updateBookingStatus(bookingId, Booking.Status.CONFIRMED.name());
                 updatePaymentStatus(Payment.Status.PAID);
-                ChargeCollection charges = getChargeCollection(confirmedIntent);
-
-                if (!charges.getData().isEmpty()) {
-                    session.setSuccessUrl(charges.getData().get(0).getReceiptUrl());
-                }
+                updateSessionSuccessUrl(confirmedIntent);
             }
         } catch (CardException cardException) {
             updatePaymentStatus(Payment.Status.FAILED);
@@ -156,7 +152,6 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (StripeException e) {
             throw new RuntimeException("Stripe error: " + e.getMessage());
         }
-
         return new PaymentSuccessResponseDto(session.getSuccessUrl());
     }
 
@@ -355,6 +350,14 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = getPaymentBySessionId();
         payment.setStatus(status);
         paymentRepository.save(payment);
+    }
+
+    private void updateSessionSuccessUrl(PaymentIntent intent) {
+        ChargeCollection charges = getChargeCollection(intent);
+
+        if (!charges.getData().isEmpty()) {
+            session.setSuccessUrl(charges.getData().get(0).getReceiptUrl());
+        }
     }
 
     private Long checkValidBookingIdsAndGetTotalAmount(Long bookingId, User user) {
