@@ -74,6 +74,15 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(TelegramException.class)
+    protected ResponseEntity<Object> handleTelegramException(TelegramException ex) {
+        body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.NOT_FOUND);
+        body.put("error", ex.getLocalizedMessage());
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
     private String getErrorMessage(ObjectError error) {
         if (error instanceof FieldError) {
             String field = ((FieldError) error).getField();

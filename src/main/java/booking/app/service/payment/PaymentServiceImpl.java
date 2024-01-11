@@ -18,6 +18,7 @@ import booking.app.repository.PaymentRepository;
 import booking.app.service.accommodation.AccommodationService;
 import booking.app.service.booking.BookingService;
 import booking.app.service.user.UserService;
+import booking.app.telegram.BookingBot;
 import com.stripe.exception.CardException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Charge;
@@ -67,6 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final BookingService bookingService;
     private final AccommodationService accommodationService;
     private final PaymentMapper paymentMapper;
+    private final BookingBot bookingBot;
 
     @Value("${stripe.secret.key}")
     private String stripeSecretKey;
@@ -139,6 +141,7 @@ public class PaymentServiceImpl implements PaymentService {
                 updateBookingStatus(bookingId, Booking.Status.CONFIRMED.name());
                 updatePaymentStatus(Payment.Status.PAID);
                 updateSessionSuccessUrl(confirmedIntent);
+                generateAndSendMessageToTelegramBot(confirmedIntent);
             }
         } catch (CardException cardException) {
             updatePaymentStatus(Payment.Status.FAILED);
@@ -434,5 +437,20 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentIntentCreateParams params, Long bookingId
     ) {
         params.getMetadata().put(BOOKING_ID_METADATA, bookingId.toString());
+    }
+
+    private void generateAndSendMessageToTelegramBot(PaymentIntent intent) {
+        Long paymentId = Long.parseLong(
+                intent.getMetadata().get(PAYMENT_ID_METADATA)
+        );
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(
+                () -> new EntityNotFoundException("Can't find payment by id: " + paymentId)
+        );
+        PaymentResponseDto dto = paymentMapper.toDto(
+                payment, intent.getPaymentMethodTypes().get(0), intent.getCurrency()
+        );
+        bookingBot.handleIncomingMessage("Successful payment |" + System.lineSeparator()
+                + dto.toString()
+        );
     }
 }

@@ -13,12 +13,14 @@ import java.math.BigDecimal;
 import java.net.URL;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 @Entity
 @Getter
 @Setter
+@ToString
 @SQLDelete(sql = "UPDATE payments SET is_deleted = TRUE WHERE id = ?")
 @Where(clause = "is_deleted = FALSE")
 @Table(name = "payments")

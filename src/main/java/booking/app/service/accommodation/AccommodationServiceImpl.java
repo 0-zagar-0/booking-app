@@ -15,6 +15,7 @@ import booking.app.model.accommodation.Amenity;
 import booking.app.repository.AccommodationRepository;
 import booking.app.service.accommodation.address.AddressService;
 import booking.app.service.accommodation.amenity.AmenityService;
+import booking.app.telegram.BookingBot;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +34,7 @@ public class AccommodationServiceImpl implements AccommodationService {
     private final AmenityService amenityService;
     private final AddressService addressService;
     private final AccommodationRepository accommodationRepository;
+    private final BookingBot bookingBot;
 
     @Override
     @Transactional
@@ -57,11 +59,21 @@ public class AccommodationServiceImpl implements AccommodationService {
             checkedAccommodation.setAvailability(
                     checkedAccommodation.getAvailability() + request.getAvailability()
             );
+            bookingBot.handleIncomingMessage("Update accommodation availability |"
+                            + System.lineSeparator()
+                    + accommodationMapper.toFullDto(checkedAccommodation).toString()
+            );
+        } else {
+            accommodation = accommodationRepository.save(accommodation);
+            bookingBot.handleIncomingMessage("Created new accommodation |"
+                    + System.lineSeparator()
+                    + accommodationMapper.toFullDto(accommodation).toString()
+            );
         }
 
         return checkedAccommodation != null
                 ? accommodationMapper.toFullDto(checkedAccommodation)
-                : accommodationMapper.toFullDto(accommodationRepository.save(accommodation));
+                : accommodationMapper.toFullDto(accommodation);
     }
 
     @Override

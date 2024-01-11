@@ -1,56 +1,51 @@
-package booking.app.telegram.service.responsemessage.impl;
+package booking.app.telegram.service.message.handlers;
 
 import booking.app.controller.AuthenticationController;
 import booking.app.dto.user.UserLoginRequestDto;
-import booking.app.telegram.service.responsemessage.ResponseMessage;
+import booking.app.model.User;
+import booking.app.telegram.service.message.MessageService;
 import java.util.List;
 import java.util.regex.Pattern;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-@Service
 @RequiredArgsConstructor
-public class LoginResponseMessage implements ResponseMessage {
+public class LoginMessageServiceImpl implements MessageService {
     private static final String EMAIL_PATTERN =
             "^[_A-Za-z0-9-]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$";
     private static final String PATTERN_OF_PASSWORD =
             "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$";
+    private static final String EMAIL = "EMAIL";
+    private static final String PASSWORD = "PASSWORD";
+    private static final String SIGN_IN = "SIGN IN";
 
     private final AuthenticationController authenticationController;
 
     private UserLoginRequestDto loginRequestDto = new UserLoginRequestDto();
-
-    @Getter
     private String jwtToken;
 
     @Override
-    public SendMessage getResponseMessage(final Message message) {
-        if (Pattern.compile(EMAIL_PATTERN).matcher(message.getText()).matches()) {
-            loginRequestDto.setEmail(message.getText().trim());
-        }
-
-        if (Pattern.compile(PATTERN_OF_PASSWORD).matcher(message.getText()).matches()) {
-            loginRequestDto.setPassword(message.getText().trim());
-        }
+    public SendMessage getResponseMessage(Message message, String jwtToken, User user) {
+        checkAndSetEmailAndPassword(message);
+        SendMessage response = new SendMessage();
+        response.setChatId(message.getChatId());
 
         if (loginRequestDto.getEmail() != null && loginRequestDto.getPassword() != null) {
             message.setText("SIGN IN");
         }
 
         return switch (message.getText()) {
-            case "EMAIL" -> createSendMessage(message, "Enter your email: ", null);
-            case "PASSWORD" -> createSendMessage(message, "Enter your password: ", null);
-            case "SIGN IN" -> signInMessage(message);
+            case EMAIL -> createSendMessage(response, null, "Enter your email: ");
+            case PASSWORD -> createSendMessage(response, null, "Enter your password: ");
+            case SIGN_IN -> signInMessage(response);
             default -> createSendMessage(
-                    message,
-                    "Go to the E-mail or password tab to enter the data.",
-                    loginKeyboard()
+                    response,
+                    loginKeyboard(),
+                    "Go to the E-mail or password tab to enter the data."
             );
         };
     }
@@ -61,20 +56,20 @@ public class LoginResponseMessage implements ResponseMessage {
     }
 
     private SendMessage createSendMessage(
-            Message message, String text, ReplyKeyboardMarkup markup
+            SendMessage response, ReplyKeyboardMarkup markup, String text
     ) {
-        SendMessage response = new SendMessage();
-        response.setChatId(message.getChatId());
-        response.setText(text);
         if (markup != null) {
             response.setReplyMarkup(markup);
         }
+
+        if (text != null && !text.isEmpty()) {
+            response.setText(text);
+        }
+
         return response;
     }
 
-    private SendMessage signInMessage(Message message) {
-        SendMessage response = new SendMessage();
-        response.setChatId(message.getChatId());
+    private SendMessage signInMessage(SendMessage response) {
         response.setReplyMarkup(getSignInKeyboard());
         response.setText("Check your details: " + System.lineSeparator()
                 + "email: " + loginRequestDto.getEmail() + System.lineSeparator()
@@ -86,10 +81,10 @@ public class LoginResponseMessage implements ResponseMessage {
             loginRequestDto.setPassword(null);
             loginRequestDto.setEmail(null);
             return createSendMessage(
-                    message,
+                    response,
+                    loginKeyboard(),
                     e.getMessage() + System.lineSeparator()
-                            + "Re-enter your email and password",
-                    loginKeyboard()
+                            + "Re-enter your email and password"
             );
         }
         return response;
@@ -98,8 +93,8 @@ public class LoginResponseMessage implements ResponseMessage {
     private ReplyKeyboardMarkup loginKeyboard() {
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         KeyboardRow row = new KeyboardRow();
-        row.add("EMAIL");
-        row.add("PASSWORD");
+        row.add(EMAIL);
+        row.add(PASSWORD);
         markup.setKeyboard(List.of(row));
         markup.setResizeKeyboard(true);
         return markup;
@@ -108,9 +103,19 @@ public class LoginResponseMessage implements ResponseMessage {
     private ReplyKeyboardMarkup getSignInKeyboard() {
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         KeyboardRow row = new KeyboardRow();
-        row.add("SIGN IN");
+        row.add(SIGN_IN);
         markup.setKeyboard(List.of(row));
         markup.setResizeKeyboard(true);
         return markup;
+    }
+
+    private void checkAndSetEmailAndPassword(Message message) {
+        if (Pattern.compile(EMAIL_PATTERN).matcher(message.getText()).matches()) {
+            loginRequestDto.setEmail(message.getText().trim());
+        }
+
+        if (Pattern.compile(PATTERN_OF_PASSWORD).matcher(message.getText()).matches()) {
+            loginRequestDto.setPassword(message.getText().trim());
+        }
     }
 }
