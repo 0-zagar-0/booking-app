@@ -12,6 +12,7 @@ import booking.app.model.accommodation.Accommodation;
 import booking.app.repository.BookingRepository;
 import booking.app.service.accommodation.AccommodationService;
 import booking.app.service.user.UserService;
+import booking.app.telegram.BookingBot;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -32,6 +33,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
     private final UserService userService;
     private final AccommodationService accommodationService;
+    private final BookingBot bookingBot;
 
     @Override
     public BookingResponseDto createBooking(final BookingRequestDto request) {
@@ -46,20 +48,10 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingMapper.toEntity(request, checkInDate, checkOutDate);
         booking.setUser(userService.getAutnenticatedUser());
         booking.setAccommodation(accommodation);
-
-        return bookingMapper.toDto(bookingRepository.save(booking));
-    }
-
-    private void checkBookingWithStatusPending() {
-        Pageable pageable = PageRequest.of(0, 1);
-        User user = userService.getAutnenticatedUser();
-        final List<BookingResponseDto> allByUserIdAndStatus
-                = getAllByUserIdAndStatus(user.getId(), Booking.Status.PENDING.name(), pageable);
-
-        if (!allByUserIdAndStatus.isEmpty()) {
-            throw new DataProcessingException("It is not possible to create a new booking until "
-                    + "you have paid or canceled the previous booking.");
-        }
+        Booking savedBooking = bookingRepository.save(booking);
+        bookingBot.handleIncomingMessage("Create new booking |" + System.lineSeparator()
+                + bookingMapper.toDto(savedBooking).toString());
+        return bookingMapper.toDto(savedBooking);
     }
 
     @Override
@@ -68,7 +60,10 @@ public class BookingServiceImpl implements BookingService {
             final String status,
             final Pageable pageable
     ) {
-        userService.existsById(userId);
+        if (!userService.existsById(userId)) {
+            throw new EntityNotFoundException("Can't find user by id: " + userId);
+        }
+
         Booking.Status validStatus = checkValidStatus(status);
         return bookingRepository.findByUserIdAndStatus(userId, validStatus, pageable).stream()
                 .map(bookingMapper::toDto)
@@ -112,6 +107,8 @@ public class BookingServiceImpl implements BookingService {
             booking.setStatus(status);
         }
 
+        bookingBot.handleIncomingMessage("Update booking status |" + System.lineSeparator()
+                + bookingMapper.toDto(booking).toString());
         bookingRepository.save(booking);
     }
 
@@ -134,6 +131,18 @@ public class BookingServiceImpl implements BookingService {
         if (!booking.getUser().getId().equals(user.getId())) {
             throw new DataProcessingException("Unable to process booking by id: "
                     + booking.getId() + ", it is not yours");
+        }
+    }
+
+    private void checkBookingWithStatusPending() {
+        Pageable pageable = PageRequest.of(0, 1);
+        User user = userService.getAutnenticatedUser();
+        final List<BookingResponseDto> allByUserIdAndStatus
+                = getAllByUserIdAndStatus(user.getId(), Booking.Status.PENDING.name(), pageable);
+
+        if (!allByUserIdAndStatus.isEmpty()) {
+            throw new DataProcessingException("It is not possible to create a new booking until "
+                    + "you have paid or canceled the previous booking.");
         }
     }
 

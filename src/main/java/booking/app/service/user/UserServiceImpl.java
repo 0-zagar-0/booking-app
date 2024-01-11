@@ -78,16 +78,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void existsById(final Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("Can't find user by id: " + id);
-        }
+    public boolean existsById(final Long id) {
+        return userRepository.existsById(id);
     }
 
     @Override
     public User getById(final Long id) {
         return userRepository.findById(id).orElseThrow(
                 () -> new EntityNotFoundException("Can't find user by id: " + id)
+        );
+    }
+
+    @Override
+    public User getByEmail(final String email) {
+        return userRepository.findByEmail(email).orElseThrow(
+                () -> new EntityNotFoundException("Can't find user by email: " + email)
         );
     }
 
