@@ -33,7 +33,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/role")
-    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Update user role", description = "Update user role by user id")
     @ResponseStatus(HttpStatus.OK)
     public void updateUserRole(

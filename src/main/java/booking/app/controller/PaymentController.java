@@ -11,6 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +28,7 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @GetMapping
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Get all user payments", description = "Get user payments")
     @ResponseStatus(HttpStatus.OK)
     public List<PaymentResponseDto> getPaymentByUser(
@@ -36,6 +38,7 @@ public class PaymentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Initialize session",
             description = "Initialize session and create payment")
     @ResponseStatus(HttpStatus.CREATED)
@@ -44,6 +47,7 @@ public class PaymentController {
     }
 
     @GetMapping("/success")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Success payment", description = "Confirm payment intent")
     @ResponseStatus(HttpStatus.OK)
     public PaymentSuccessResponseDto successfulPaymentProcessing() {
@@ -51,6 +55,7 @@ public class PaymentController {
     }
 
     @GetMapping("/cancel")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Payment cancellation", description = "Payment cancellation")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public PaymentCanceledResponseDto paymentCancellation() {

@@ -12,6 +12,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class AccommodationController {
     private final AccommodationService accommodationService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Add accommodation", description = "Added accommodation")
     @ResponseStatus(HttpStatus.CREATED)
     public AccommodationFullInfoResponseDto createAccommodation(
@@ -38,7 +40,7 @@ public class AccommodationController {
         return accommodationService.createAccommodation(request);
     }
 
-    @GetMapping
+    @GetMapping("/all")
     @Operation(summary = "Get all", description = "Get all accommodations of availability")
     @ResponseStatus(HttpStatus.OK)
     public List<AccommodationIncompleteInfoResponseDto> getAll(Pageable pageable) {
@@ -46,6 +48,7 @@ public class AccommodationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Get by id", description = "Get full information about accommodation")
     @ResponseStatus(HttpStatus.OK)
     public AccommodationFullInfoResponseDto getById(@PathVariable Long id) {
@@ -53,6 +56,7 @@ public class AccommodationController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Update by id", description = "Update accommodation by id")
     @ResponseStatus(HttpStatus.OK)
     public void updateById(
@@ -63,6 +67,7 @@ public class AccommodationController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Delete by id", description = "Delete accommodation by id")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteById(@PathVariable Long id) {
