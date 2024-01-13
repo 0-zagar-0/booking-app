@@ -35,6 +35,7 @@
         <javax.servlet.version>4.0.1</javax.servlet.version>
         <hsqldb.version>2.7.2</hsqldb.version>
         <mysql.connector.version>8.0.33</mysql.connector.version>
+        <testconteiners.version>1.18.3</testconteiners.version>
     </properties>
 
     <dependencies>
@@ -177,7 +178,25 @@
             <artifactId>telegrambots-spring-boot-starter</artifactId>
             <version>${telegrambots.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <version>${testconteiners.version}</version>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testconteiners.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
