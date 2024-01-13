@@ -11,6 +11,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Create booking", description = "Create booking")
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponseDto createBooking(@RequestBody @Valid BookingRequestDto request) {
@@ -37,6 +39,7 @@ public class BookingController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Get booking", description = "Get booking by user id and status")
     @ResponseStatus(HttpStatus.OK)
     public List<BookingResponseDto> getAllByIdAndStatus(
@@ -48,6 +51,7 @@ public class BookingController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Get all my bookings", description = "Get all user bookings")
     @ResponseStatus(HttpStatus.OK)
     public List<BookingResponseDto> getAllMyBookings(Pageable pageable) {
@@ -55,6 +59,7 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Get booking by id", description = "Get booking by id")
     @ResponseStatus(HttpStatus.OK)
     public BookingResponseDto getById(@PathVariable Long id) {
@@ -62,6 +67,7 @@ public class BookingController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Update by id", description = "Update by id")
     @ResponseStatus(HttpStatus.OK)
     public void updateById(@PathVariable Long id, @RequestBody BookingUpdateRequestDto request) {
@@ -69,6 +75,7 @@ public class BookingController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Delete by id", description = "Delete by id")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteById(@PathVariable Long id) {
