@@ -1,0 +1,1 @@
+UPDATE users SET role = 'ROLE_CUSTOMER' WHERE id = 1;
