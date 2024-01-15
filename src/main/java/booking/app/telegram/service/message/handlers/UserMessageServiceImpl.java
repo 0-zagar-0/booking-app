@@ -275,7 +275,7 @@ public class UserMessageServiceImpl implements MessageService {
         if (updateRoleData.size() > 1) {
             for (User.Role value : User.Role.values()) {
                 if (updateRoleData.get(1).equals(value.name())) {
-                    updateRoleDto = new UserUpdateRoleDto(value);
+                    updateRoleDto = new UserUpdateRoleDto(value.name());
                 }
             }
             url = "http://localhost:8080/api/users/" + updateRoleData.get(0) + "/role";

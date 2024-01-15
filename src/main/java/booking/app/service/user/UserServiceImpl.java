@@ -4,6 +4,7 @@ import booking.app.dto.user.UserRegisterRequestDto;
 import booking.app.dto.user.UserResponseDto;
 import booking.app.dto.user.UserUpdateProfileInformationDto;
 import booking.app.dto.user.UserUpdateRoleDto;
+import booking.app.exception.DataProcessingException;
 import booking.app.exception.EntityNotFoundException;
 import booking.app.exception.RegistrationException;
 import booking.app.mapper.UserMapper;
@@ -36,7 +37,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponseDto getUserProfile() {
-        User user = getAndCheckAuthenticatedUser();
+        User user = getAutnenticatedUser();
         return userMapper.toDto(user);
     }
 
@@ -45,27 +46,32 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id).orElseThrow(
                 () -> new EntityNotFoundException("Can't find user by id: " + id)
         );
-        user.setRole(updateRoleDto.role());
+        final User.Role role = checkValidUserRole(updateRoleDto);
+        user.setRole(role);
         userRepository.save(user);
     }
 
     @Override
     public UserResponseDto updateUserProfile(final UserUpdateProfileInformationDto request) {
-        User user = getAndCheckAuthenticatedUser();
+        User user = getAutnenticatedUser();
 
-        if (request.email() != null && !request.email().equals(user.getEmail())) {
+        if (request.email() != null && !request.email().isEmpty()
+                && !request.email().equals(user.getEmail())) {
             user.setEmail(request.email());
         }
 
-        if (request.password() != null && !request.password().equals(user.getPassword())) {
+        if (request.password() != null && !request.password().isEmpty()
+                && !request.password().equals(user.getPassword())) {
             user.setPassword(passwordEncoder.encode(request.password()));
         }
 
-        if (request.firstName() != null && !request.firstName().equals(user.getFirstName())) {
+        if (request.firstName() != null && !request.firstName().isEmpty()
+                && !request.firstName().equals(user.getFirstName())) {
             user.setFirstName(request.firstName());
         }
 
-        if (request.lastName() != null && !request.lastName().equals(user.getLastName())) {
+        if (request.lastName() != null && !request.lastName().isEmpty()
+                && !request.lastName().equals(user.getLastName())) {
             user.setLastName(request.lastName());
         }
 
@@ -74,7 +80,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getAutnenticatedUser() {
-        return getAndCheckAuthenticatedUser();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            throw new DataProcessingException("Unable to find authenticated user");
+        }
+
+        return userRepository.findByEmail(authentication.getName()).orElseThrow(
+                () -> new EntityNotFoundException("Can't find user by user email: "
+                        + authentication.getName()
+                )
+        );
     }
 
     @Override
@@ -96,21 +112,23 @@ public class UserServiceImpl implements UserService {
         );
     }
 
-    private User getAndCheckAuthenticatedUser() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    private User.Role checkValidUserRole(UserUpdateRoleDto updateRoleDto) {
+        User.Role role = null;
+        String requestRole = updateRoleDto.role().trim().toUpperCase();
+        StringBuilder roleMessage = new StringBuilder();
 
-            if (authentication == null) {
-                throw new RegistrationException("Unable to find authenticated user");
+        for (User.Role value : User.Role.values()) {
+            roleMessage.append(",").append(" ").append(value.name());
+
+            if (value.name().equals(requestRole)) {
+                role = value;
             }
-
-            return userRepository.findByEmail(authentication.getName()).orElseThrow(
-                            () -> new EntityNotFoundException(
-                                    "Can't find user by user name: " + authentication.getName()
-                            )
-                    );
-        } catch (RegistrationException e) {
-            throw new RuntimeException("The operation cannot be continued", e);
         }
+
+        if (role == null) {
+            throw new DataProcessingException("Incorrect role name entered, "
+                    + "please enter correct data" + roleMessage.toString());
+        }
+        return role;
     }
 }
