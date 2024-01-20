@@ -1,0 +1,1 @@
+DELETE FROM addresses WHERE address = 'City, Street, 12';

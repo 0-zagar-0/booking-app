@@ -1,0 +1,1 @@
+DELETE FROM accommodations_amenities WHERE accommodation_id = 4;
