@@ -22,6 +22,7 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @booking.app.validation.Address
     @Column(name = "address", nullable = false)
     private String address;
 

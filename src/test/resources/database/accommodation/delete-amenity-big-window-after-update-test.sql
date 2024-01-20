@@ -1,0 +1,1 @@
+DELETE FROM amenities WHERE name = 'BIG WINDOW';

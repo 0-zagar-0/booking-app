@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Address {
-    String message() default " is incorrect must be: City, Street, number house";
+    String message() default "is incorrect must be: City, Street, number house";
 
     Class<?>[] groups() default {};
 

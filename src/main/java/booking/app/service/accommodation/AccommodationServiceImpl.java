@@ -42,7 +42,7 @@ public class AccommodationServiceImpl implements AccommodationService {
         Type type = checkAndGetSizeOrType(request.getType(), Type.class);
         checkAvailabilityForHouseType(type, request.getAvailability());
         checkValidAddressForHouseType(type, request.getAddress());
-
+        Size size = checkAndGetSizeOrType(request.getSize(), Size.class);
         Accommodation accommodation = accommodationMapper.toEntity(request);
         accommodation.setAmenities(amenityService.getSetAmenitiesByAmenitiesNames(
                 request.getAmenities())
@@ -51,7 +51,7 @@ public class AccommodationServiceImpl implements AccommodationService {
                 addressService.getAddressIfExistingOrSaveAndGet(request.getAddress())
         );
         accommodation.setType(type);
-        accommodation.setSize(checkAndGetSizeOrType(request.getSize(), Size.class));
+        accommodation.setSize(size);
 
         Accommodation checkedAccommodation = checkAndReturnExistingAccommodation(accommodation);
 
@@ -86,9 +86,7 @@ public class AccommodationServiceImpl implements AccommodationService {
 
     @Override
     public AccommodationFullInfoResponseDto getById(final Long id) {
-        return accommodationMapper.toFullDto(accommodationRepository.findById(id).orElseThrow(
-                () -> new EntityNotFoundException("Can't find accommodation by id: " + id))
-        );
+        return accommodationMapper.toFullDto(getAccommodationById(id));
     }
 
     @Override
@@ -96,9 +94,7 @@ public class AccommodationServiceImpl implements AccommodationService {
             final Long id,
             final AccommodationUpdateRequestDto request
     ) {
-        Accommodation accommodation = accommodationRepository.findById(id).orElseThrow(
-                () -> new EntityNotFoundException("Can't find accommodation by id: " + id)
-        );
+        Accommodation accommodation = getAccommodationById(id);
 
         if (request.getAmenities() != null && !request.getAmenities().isEmpty()) {
             Set<Amenity> amenities = amenityService.getSetAmenitiesByAmenitiesNames(

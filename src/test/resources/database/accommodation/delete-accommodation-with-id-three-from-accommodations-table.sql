@@ -1,0 +1,1 @@
+DELETE FROM accommodations WHERE id = 4;

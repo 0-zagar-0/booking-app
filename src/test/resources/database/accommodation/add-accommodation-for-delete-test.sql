@@ -1,0 +1,1 @@
+INSERT INTO accommodations (id, type, address_id, size, daily_rate, availability) VALUES (3, 'APARTMENT', 2, 'THREE_BEDROOM', 300.00, 3);
