@@ -6,6 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
+@Builder
 public class PaymentCreateRequestDto {
     private String productName;
     private Long bookingId;
