@@ -42,7 +42,7 @@ public class BookingController {
     @PreAuthorize("hasRole('ROLE_MANAGER')")
     @Operation(summary = "Get booking", description = "Get booking by user id and status")
     @ResponseStatus(HttpStatus.OK)
-    public List<BookingResponseDto> getAllByIdAndStatus(
+    public List<BookingResponseDto> getAllByUserIdAndStatus(
             @RequestParam(name = "user_id", required = true) Long userId,
             @RequestParam(name = "status", required = false) String status,
             Pageable pageable

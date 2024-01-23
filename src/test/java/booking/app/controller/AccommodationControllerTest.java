@@ -128,8 +128,6 @@ class AccommodationControllerTest {
         AccommodationFullInfoResponseDto actual = objectMapper.readValue(
                 result.getResponse().getContentAsString(), AccommodationFullInfoResponseDto.class
         );
-        System.out.println(expected);
-        System.out.println(actual);
         assertTrue(EqualsBuilder.reflectionEquals(expected, actual));
     }
     

@@ -98,13 +98,20 @@ public class BookingServiceImpl implements BookingService {
             checkingDateBookingAndAvailability(
                     checkInDate, checkOutDate, booking.getAccommodation()
             );
-            booking.setCheckInDate(checkInDate);
-            booking.setCheckOutDate(checkOutDate);
+
+            if (!booking.getCheckInDate().equals(checkInDate)) {
+                booking.setCheckInDate(checkInDate);
+                booking.setCheckOutDate(checkOutDate);
+            }
         }
 
         if (request.getStatus() != null) {
             Booking.Status status = checkValidStatus(request.getStatus());
-            booking.setStatus(status);
+
+            if (!booking.getStatus().equals(status)) {
+                booking.setStatus(status);
+            }
+
         }
 
         bookingBot.handleIncomingMessage("Update booking status |" + System.lineSeparator()
@@ -187,7 +194,7 @@ public class BookingServiceImpl implements BookingService {
         List<Booking> bookingWithPendingStatus = new ArrayList<>();
 
         for (Booking booking : bookings) {
-            if (booking.getStatus().equals(Booking.Status.PENDING)
+            if (booking != null && booking.getStatus().equals(Booking.Status.PENDING)
                     || booking.getStatus().equals(Booking.Status.CONFIRMED)) {
                 bookingWithPendingStatus.add(booking);
             }

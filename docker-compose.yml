@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  mysqldb:
+  mysql_booking_db:
     image: mysql:8.0.33
     restart: unless-stopped
     env_file: ./.env
@@ -13,7 +13,7 @@ services:
     command: --innodb-redo-log-capacity=10485760
   booking_app:
     depends_on:
-      - mysqldb
+      - mysql_booking_db
     image: booking
     restart: unless-stopped
     build: .
@@ -23,7 +23,7 @@ services:
       - $DEBUG_PORT:$DEBUG_PORT
     environment:
       SPRING_APPLICATION_JSON: '{
-        "spring.datasource.url" : "jdbc:mysql://mysqldb:$MYSQL_DB_DOCKER_PORT/$MYSQLDB_DATABASE?serverTimezone=UTC",
+        "spring.datasource.url" : "jdbc:mysql://mysql_booking_db:$MYSQL_DB_DOCKER_PORT/$MYSQLDB_DATABASE?serverTimezone=UTC",
         "spring.datasource.username" : "$MYSQLDB_USER",
         "spring.datasource.password" : "$MYSQLDB_ROOT_PASSWORD",
         "spring.jpa.hibernate.ddl-auto" : "validate"
