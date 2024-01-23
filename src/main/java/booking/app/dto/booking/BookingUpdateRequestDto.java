@@ -1,6 +1,7 @@
 package booking.app.dto.booking;
 
 import booking.app.validation.DateTime;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,6 +10,7 @@ import lombok.Setter;
 public class BookingUpdateRequestDto {
     @DateTime
     private String checkInDateYearMonthDay;
+    @Min(1)
     private Integer daysOfStay;
     private String status;
 }
