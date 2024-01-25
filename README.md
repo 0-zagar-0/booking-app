@@ -340,6 +340,10 @@ associated booking ID, session URL for payment processing, session ID, payment a
             If you will test the application locally in swagger, then after launching the application, follow this link. Use the port specified in the .env file
             <pre>http://localhost:8080/api/swagger-ui/index.html#</pre>
         </p>
+        <p>
+            This project is also uploaded to AWS server, you can follow this link and use Swagger to test the application without installing anything
+            <pre>http://ec2-18-208-193-98.compute-1.amazonaws.com/api/swagger-ui/index.html#/</pre>
+        </p>
     </div>
     <div id="notification">
         <h1>Notification Service</h1>
