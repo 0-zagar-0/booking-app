@@ -148,5 +148,4 @@ public class BookingBot extends TelegramLongPollingBot {
             }
         }
     }
-
 }
