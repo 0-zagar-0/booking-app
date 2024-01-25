@@ -50,7 +50,7 @@ public class BookingController {
         return bookingService.getAllByUserIdAndStatus(userId, status, pageable);
     }
 
-    @GetMapping("/me")
+    @GetMapping("/my")
     @PreAuthorize("hasAnyRole('ROLE_CUSTOMER', 'ROLE_MANAGER')")
     @Operation(summary = "Get all my bookings", description = "Get all user bookings")
     @ResponseStatus(HttpStatus.OK)
