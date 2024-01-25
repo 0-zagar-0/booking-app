@@ -349,7 +349,7 @@ associated booking ID, session URL for payment processing, session ID, payment a
         <h1>Notification Service</h1>
         <p>
 A telegram bot was created for managers to notify them about newly created reservations and paid or canceled payments. You can join the bot when you test the application.</p>
-        <pre>https://t.me/Booking_Application_bot</pre>
+        <pre>https://t.me/Booking_Application_test_bot</pre>
     </div>
     <div>
         <h1>The video shows how the application works</h1>
