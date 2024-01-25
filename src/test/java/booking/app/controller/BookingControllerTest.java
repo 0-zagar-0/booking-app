@@ -185,7 +185,7 @@ class BookingControllerTest {
 
         //When
         MvcResult result = mockMvc.perform(
-                        get("/bookings/me")
+                        get("/bookings/my")
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();

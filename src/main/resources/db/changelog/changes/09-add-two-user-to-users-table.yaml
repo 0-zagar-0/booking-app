@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-two-user-to-users-table
+      author: zagar
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column: { name: "email", value: "customer@example.com" }
+              - column: { name: "password", value: "$2a$10$9X1tL3P6nzkcPS1hzGXmvenxXLN9SJPjMYbxM8t/FsdoFF3Neu9CO" }
+              - column: { name: "first_name", value: "Bob" }
+              - column: { name: "last_name", value: "Alison" }
+              - column: { name: "role", value: "ROLE_CUSTOMER" }
+        - insert:
+            tableName: users
+            columns:
+              - column: { name: "email", value: "manager@example.com" }
+              - column: { name: "password", value: "$2a$10$NF2dGFBdX/3n4CbRQq4gqe4IX1YUiEhoUvQUT3g4.45h79PDlqV0m" }
+              - column: { name: "first_name", value: "Manager" }
+              - column: { name: "last_name", value: "Manager" }
+              - column: { name: "role", value: "ROLE_MANAGER" }
