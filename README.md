@@ -2,10 +2,10 @@
     <header>
         <img src="icons/booking.jpeg" style="height: 250px; width: 800px; display: block; margin: auto" alt="book logo">
         <h1 style="position: absolute; top: 50px; left: 50%; transform: translate(-50%); color: black;">
-            Accommodation booking service
+            StaySwift: Effortless Accommodation Booking
         </h1>
         <p style="text-align: center">
-            Welcome to the Accommodation Booking Service! Our platform is revolutionizing the rental process, providing a convenient and efficient experience for both seekers and administrators.
+            Welcome to the StaySwift: Effortless Accommodation Booking! Our platform is revolutionizing the rental process, providing a convenient and efficient experience for both seekers and administrators.
             For users, it's a straightforward journey from registration to booking their chosen accommodation. The user-friendly interface offers detailed information about each property, including type, location, size, amenities, daily rates, and real-time availability.
             For administrators, a powerful toolkit streamlines the management of the housing inventory. Adding, updating, and removing properties is a breeze, with instant availability information. Forget about paperwork – now everything is on your screen in real-time.
             Booking is under user control. From creating and managing bookings to modifications – it's all in the hands of the user. Administrators also easily access booking information for effective management.
